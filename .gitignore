@@ -1,3 +1,10 @@
 #Python
 __pycache__
 venv
+#Testing
+test_server.py
+test.py
+#VSCode
+.vscode
+#Misc
+*.txt
