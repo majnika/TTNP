@@ -1,0 +1,6 @@
+cffi
+colorama
+cryptography
+pycparser
+six
+termcolor
