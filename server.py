@@ -7,6 +7,7 @@ import threading
 import colorama #type: ignore
 colorama.init() #type: ignore
 from termcolor import colored
+from connection import Connection
 
 class Server:
     """
@@ -17,17 +18,16 @@ class Server:
 
     #The mapper of the handler functions
     _mapper: Dict[str, Callable[[Packet], None]] = dict()
+    _connection: Dict[str, "Queue[Packet]"] = dict()
     #The address of the server 
     addr: Tuple[str, int]
-    #TODO Make a unique instance for every connetion
-    _f: Fernet
     #Whether control data will be displayed to the CLI
     _cli: bool = True
     #The size of the packet
     #127 Bits of actual data
     #TODO Make larger packet sizes available if 256 is not sufficient
     PACKET_SIZE: int = 256
-    #The queue
+    #The queue for outgoing packets consumed by sender_thread
     _outgoing_queue: "Queue[Packet]" = Queue(-1)
 
     _report_types: Dict[int, str] = {
@@ -60,7 +60,6 @@ class Server:
             if self.addr:
                 self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 self._socket.bind(self.addr)
-                # self._socket.listen()
                 self._report(f"Server is listening on {self.addr}","SERVER")
                 self._accept_connections()
             else:
@@ -72,36 +71,54 @@ class Server:
         #All packets arrive at this function(TODO test for viability)
         
         #The sender thread handles sanding of all of the outgoing packets from the server
-        # sender_thred = threading.Thread(target=self.sender_function)
+        sender_thred = threading.Thread(target=self.sender_function,name="Sender Thread")
+        sender_thred.start()
 
         while True: #Change this to something sexier, maybe recursion ( ͡° ͜ʖ ͡°) 
             data, addr = self._socket.recvfrom(self.PACKET_SIZE)
-            if (pack := Packet.from_bytes(data)).flag == "CHI" and pack.server == "0000": 
+            pack = Packet.from_bytes(data)
+            if (pack).flag == "CHI" and pack.server == "0000": 
                 #Packet is a fresh request for connection
                 #TODO make a list of connected sockets to prevent pottential system overload from
                 #falsly created threads
 
                 pack.addr = addr
                 
+                number_of_conn = len(self._connection.keys())
+
+                server = ("0" * (4 - number_of_conn)) + str(number_of_conn+1)
+
+                self._connection[server] = Queue(-1)
+
+                conn = Connection(pack.addr,server,15,self._connection[server],self._outgoing_queue)
+
                 #Start a new thread for every connection
-                thread = threading.Thread(target = self._handle_incoming, args=(pack,))
+                thread = threading.Thread(target = self._handle_incoming, args=(pack,conn))
                 
                 self._report(f"New thread {thread.getName()} is serving {addr}",thread.getName().capitalize())
                 
                 thread.start()
+            
+            else:
+                self._connection[pack.server].put(pack)
 
 
-    def _handle_incoming(self, pack: Packet) -> None:
-        self._report(f"Packet with content:{pack.raw} arrived",
+    def _handle_incoming(self, pack: Packet, conn: Connection) -> None:
+        #For debug purposes
+        self._report(f"Packet with content:{pack} arrived \n Data:{pack.raw_data}",
                      threading.currentThread().getName().capitalize()
         )
 
-        self._mapper[pack.flag](pack)
+        conn.handshake()
+
+        while conn.is_alive:
+            self._mapper[pack.flag](pack)
 
 
     def sender_function(self) -> None:
         while (outbound := self._outgoing_queue.get(block=True)).addr != ("stop",404):
-            self._socket.sendto(self.pack(outbound),outbound.addr)
+            #Maybe introduce Packet.packed: bool member
+            self._socket.sendto(outbound.packed_data,outbound.addr)
 
 
     def add_address(self, addr: str, port: int) -> None:
@@ -120,13 +137,3 @@ class Server:
     def listen_on_socket(self, addr_port: Tuple[str, int], cli: bool = True) -> None:
         self.addr = addr_port
         self.listen(cli)
-
-    
-    def pack(self, to_pack: Packet) -> bytes:
-        msg: bytes = bytes()
-        msg += to_pack.flag.encode()
-        msg += self.f.encrypt((to_pack.data).encode())   
-        msg += ('#'*(251 - len(msg))).encode()
-        msg += to_pack.server.encode()
-        msg += "\n".encode()
-        return msg
