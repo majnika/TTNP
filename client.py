@@ -11,8 +11,10 @@ client.connect((server,port))
 
 pack: Packet = Packet("CHI","Ferko","0000")
 
-print(f"Sending: {pack.raw}")
+print(f"Sending: {pack.contents}")
 
-client.send(pack.raw.encode())
+client.send(pack.contents.encode())
+
+print(client.recvfrom(PACKET_SIZE))
 
 client.close()
