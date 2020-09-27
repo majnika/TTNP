@@ -1,3 +1,5 @@
+from base64 import urlsafe_b64encode
+from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey#, DHParameters
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_pem_public_key
 from packet import Packet
@@ -78,5 +80,30 @@ shared_key = private_key.exchange(server_public_key_decoded)
 
 shared_key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'handshake data', backend=default_backend()).derive(shared_key)
 print(shared_key)
+
+print(shared_key)
+f = Fernet(urlsafe_b64encode(shared_key))
+
+def pack_func(to_pack: Packet, f: Fernet) -> Packet:
+        msg: bytes = bytes()
+        msg += to_pack.flag.encode()
+        print(len(msg),msg)
+        msg += f.encrypt((to_pack.raw_data).encode()) 
+        print(len(msg),msg)  
+        msg += ('#'*(251 - len(msg))).encode()
+        print(len(msg),msg)
+        msg += to_pack.server.encode()
+        print(len(msg),msg)
+        msg += "\n".encode()
+        to_pack.packed_data = msg
+        return to_pack
+
+packet = Packet("CCC","Hello, can you see this",server)
+
+pack_func(packet,f).packed_data
+
+print(len(packet.packed_data))
+
+client.send(packet.packed_data)
 
 client.close()

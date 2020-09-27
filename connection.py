@@ -1,3 +1,4 @@
+from base64 import urlsafe_b64encode
 from datetime import datetime
 from typing import Tuple
 from cryptography.fernet import Fernet
@@ -85,13 +86,19 @@ class Connection:
         shared_key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'handshake data', backend=default_backend()).derive(shared_key)
         print(shared_key)
 
+        self._f = Fernet(urlsafe_b64encode(shared_key))
+
+        ccc: Packet = self._q_IN.get()
+
+        print(self._f.decrypt(ccc.raw_data.encode()).decode()) 
+
     def ship(self, pack: Packet) -> None:
         self._q_OUT.put(pack)
 
     def pack(self, to_pack: Packet) -> Packet:
         msg: bytes = bytes()
         msg += to_pack.flag.encode()
-        msg += self._f.encrypt((to_pack.data).encode())   
+        msg += self._f.encrypt((to_pack.raw_data).encode())   
         msg += ('#'*(248 - len(msg))).encode()
         msg += to_pack.server.encode()
         msg += "\n".encode()
