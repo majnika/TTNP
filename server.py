@@ -29,6 +29,7 @@ class Server:
     PACKET_SIZE: int = 256
     #The queue for outgoing packets consumed by sender_thread
     _outgoing_queue: "Queue[Packet]" = Queue(-1)
+    _next_server: int = 1
 
     _report_types: Dict[int, str] = {
         0 : "white",    #Ordinary
@@ -40,6 +41,14 @@ class Server:
 
     def __init__(self) -> None:
         self.f = Fernet(Fernet.generate_key())
+
+    @property
+    def next_server(self):
+        if self._next_server != 9999:
+            self._next_server += 1
+        else:
+            self._next_server = 1  
+        return ("0" * (4 - len(str(self._next_server)))) + str(self._next_server+1)
 
 
     def _report(self, msg: str, sender: str = "REPORT", type: int = 0) -> None:
@@ -83,10 +92,8 @@ class Server:
                 #falsly created threads
 
                 pack.addr = addr
-                
-                number_of_conn = len(self._connection.keys())
 
-                server = ("0" * (4 - number_of_conn)) + str(number_of_conn+1)
+                server = self.next_server
 
                 self._connection[server] = Queue(-1)
 
