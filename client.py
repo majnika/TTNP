@@ -81,24 +81,18 @@ shared_key = private_key.exchange(server_public_key_decoded)
 shared_key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'handshake data', backend=default_backend()).derive(shared_key)
 print(shared_key)
 
-print(shared_key)
 f = Fernet(urlsafe_b64encode(shared_key))
 
 def pack_func(to_pack: Packet, f: Fernet) -> Packet:
         msg: bytes = bytes()
         msg += to_pack.flag.encode()
-        print(len(msg),msg)
-        msg += f.encrypt((to_pack.raw_data).encode()) 
-        print(len(msg),msg)  
-        msg += ('#'*(251 - len(msg))).encode()
-        print(len(msg),msg)
+        msg += f.encrypt((to_pack.data).encode()) 
         msg += to_pack.server.encode()
-        print(len(msg),msg)
         msg += "\n".encode()
         to_pack.packed_data = msg
         return to_pack
 
-packet = Packet("CCC","Hello, can you see this",server)
+packet = Packet("CCC",input("Message: "),server)
 
 pack_func(packet,f).packed_data
 
