@@ -90,7 +90,7 @@ class Connection:
 
         ccc: Packet = self._q_IN.get()
 
-        print(self._f.decrypt(ccc.raw_data.encode()).decode()) 
+        print(self.unpack(ccc).raw_data) 
 
     def ship(self, pack: Packet) -> None:
         self._q_OUT.put(pack)
@@ -98,12 +98,16 @@ class Connection:
     def pack(self, to_pack: Packet) -> Packet:
         msg: bytes = bytes()
         msg += to_pack.flag.encode()
-        msg += self._f.encrypt((to_pack.raw_data).encode())   
-        msg += ('#'*(248 - len(msg))).encode()
+        msg += self._f.encrypt((to_pack.data).encode())   
+        # msg += ('#'*(248 - len(msg))).encode()
         msg += to_pack.server.encode()
         msg += "\n".encode()
         to_pack.packed_data = msg
         return to_pack
+
+    def unpack(self, to_unpack: Packet) -> Packet:
+        to_unpack.data = self._f.decrypt(to_unpack.data.encode()).decode()
+        return to_unpack
 
     @property
     def is_alive(self) -> bool:
