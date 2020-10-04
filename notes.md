@@ -8,7 +8,7 @@
  1 | CHI | S-- |  CHI = Client Handshake Innit     |   - Client initiates conversation 
  2 | C-- | SHI |  SHI = Server Handshake Innit     |   - Server begins the synchronisiation process
  3 | C-- | SDH |  SDH = Server Diffie-Hellman      |   - Server Begins the Diffie-Hellman exhcnage by sending its private key
- 4 | CDH | S-- |  CDH = Client Diffie-Hellman      |   - Client responds to the SDH by sending its wond private key
+ 4 | CDH | S-- |  CDH = Client Diffie-Hellman      |   - Client responds to the SDH by sending its own private key
  5 | C-- | SCC |  SCC = Server Crypto Check        |   - Server sends encrypted message with the newly generated hash from Diffie-Hellman 
  5 |     |     |                                   |     `TODO` Contents of the message, Maybe a math problem
  6 | CCC | S-- |  CCC = Client Crypto Check        |   - Client responds to the encrypted message \
@@ -40,7 +40,7 @@ ________________________________________________________________________________
 
 ________________________________________________________________________________________________________________________________________
 
-## The Server Initiated Connection Terminated(SICT)
+## The Server Initiated Connection Termination(SICT)
 ### The SICT describes the process of Terminated of the Connection by the Client. This only occures if the Server does not recieve a Heartbeat on time
 
  0 | C-- | S-- |                                   |                                                                                     |
