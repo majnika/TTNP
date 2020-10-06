@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import dh
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, load_pem_public_key
-from  cryptography.hazmat.primitives.serialization import PublicFormat
+from  cryptography.hazmat.primitives.serialization import PublicFormat#, ParameterFormat
 
 class Connection:
 
@@ -25,9 +25,9 @@ class Connection:
         self._f: Fernet
         self._hanshake_sequence: "list[str]" = ["CHI","CDH","CCC"]
 
-    def handshake(self):
-        pack = Packet("SHI","Hello",self.server)
-        pack.packed_data = pack.contents.encode()
+    def handshake(self) -> bool:
+        pack = Packet("SHI","Hello|"+ f"TTL:{self.TTL}" ,self.server)
+        pack.packed_data = ((pack.flag+pack.data+'#'*(248-len(pack.data))+pack.server+'\n')).encode()
         pack.addr = self.addr
         self.ship(pack)
 
@@ -38,6 +38,8 @@ class Connection:
         params_numbers = dh.DHParameterNumbers(p,g,None)
         parameters = params_numbers.parameters(default_backend())
 
+        #print(len(parameters.parameter_bytes(Encoding.PEM, ParameterFormat.PKCS3))) 
+        #TODO make an option to either use static or dynamic parameters
         # parameters: DHParameters = dh.generate_parameters(generator=2, key_size=2048,backend=default_backend()) #type: ignore
 
         private_key: DHPrivateKey = parameters.generate_private_key()
@@ -88,11 +90,24 @@ class Connection:
 
         self._f = Fernet(urlsafe_b64encode(shared_key))
 
+        self.ship(self.pack(Packet("SCC","Hello, can you see this?",self.server)))
+
         ccc: Packet = self._q_IN.get()
 
         print(self.unpack(ccc).raw_data) 
 
+        self.ship(self.pack(Packet("SHF","Secret message",self.server)))
+
+        self._last_hb = datetime.now()
+
+        return True
+
+    def get(self) -> Packet:
+        return self._q_IN.get(block=True,timeout=self.TTL)
+
+
     def ship(self, pack: Packet) -> None:
+        pack.addr = self.addr
         self._q_OUT.put(pack)
 
     def pack(self, to_pack: Packet) -> Packet:
@@ -106,12 +121,15 @@ class Connection:
         return to_pack
 
     def unpack(self, to_unpack: Packet) -> Packet:
-        to_unpack.data = self._f.decrypt(to_unpack.data.encode()).decode()
+        to_unpack.data = self._f.decrypt(to_unpack.raw_data.encode()).decode()
         return to_unpack
+
+    def renew(self):
+        self._last_hb = datetime.now()
 
     @property
     def is_alive(self) -> bool:
-        return (datetime.now() - self._last_hb).seconds < self.TTL
+        return ((datetime.now() - self._last_hb).seconds) < self.TTL
 
 if __name__ == "__main__":
 
