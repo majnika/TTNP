@@ -2,10 +2,10 @@ from typing import Callable, Dict
 from packet import Packet
 from server import Server
 
-server: Server = Server()
+server: Server = Server(TTL=15)
 
 def begin_Handshake(pack: Packet):
-    print(f"[PLACEHOLDER]: Beginning Handshake with{pack.addr}")
+    pass
 
 def begin_Diffie_Hellman(pack: Packet):
     pass
