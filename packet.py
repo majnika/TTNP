@@ -26,7 +26,7 @@ class Packet:
 
     @property
     def contents(self) -> str:
-        return self.flag + self.data + (121 * '#') + self.server + '\n'
+        return self.flag + self.data + self.server + '\n'
 
     @property
     def raw_data(self) -> str:
