@@ -1,6 +1,6 @@
-from queue import Queue
+from queue import Empty, Queue
 from typing import Dict, Callable, Tuple
-from cryptography.fernet import Fernet
+# from cryptography.fernet import Fernet
 from packet import Packet
 import socket
 import threading
@@ -29,7 +29,7 @@ class Server:
     PACKET_SIZE: int = 256
     #The queue for outgoing packets consumed by sender_thread
     _outgoing_queue: "Queue[Packet]" = Queue(-1)
-    _next_server: int = 1
+    _next_server: int = 0
 
     _report_types: Dict[int, str] = {
         0 : "white",    #Ordinary
@@ -39,8 +39,8 @@ class Server:
     }
 
 
-    def __init__(self) -> None:
-        self.f = Fernet(Fernet.generate_key())
+    def __init__(self, TTL: float=15) -> None:
+        self.TTL = TTL
 
     @property
     def next_server(self):
@@ -80,7 +80,7 @@ class Server:
         #All packets arrive at this function(TODO test for viability)
         
         #The sender thread handles sanding of all of the outgoing packets from the server
-        sender_thred = threading.Thread(target=self.sender_function,name="Sender Thread")
+        sender_thred = threading.Thread(target=self._sender_function,name="Sender Thread")
         sender_thred.start()
 
         while True: #Change this to something sexier, maybe recursion ( ͡° ͜ʖ ͡°) 
@@ -97,10 +97,12 @@ class Server:
 
                 self._connection[server] = Queue(-1)
 
-                conn = Connection(pack.addr,server,15,self._connection[server],self._outgoing_queue)
+                conn = Connection(pack.addr,server,self.TTL,self._connection[server],self._outgoing_queue) #type: ignore
+
+                print(self._connection)
 
                 #Start a new thread for every connection
-                thread = threading.Thread(target = self._handle_incoming, args=(pack,conn))
+                thread = threading.Thread(target = self._handle_incoming,args=(conn,))
                 
                 self._report(f"New thread {thread.getName()} is serving {addr}",thread.getName().capitalize())
                 
@@ -110,19 +112,31 @@ class Server:
                 self._connection[pack.server].put(pack)
 
 
-    def _handle_incoming(self, pack: Packet, conn: Connection) -> None:
-        #For debug purposes
-        self._report(f"Packet with content:{pack} arrived \n Data:{pack.raw_data}",
-                     threading.currentThread().getName().capitalize()
-        )
+    def _handle_incoming(self, conn: Connection) -> None:
+        # #For debug purposes
+        # self._report(f"Packet with content:{pack} arrived \n Data:{pack.raw_data}",
+        #              threading.currentThread().getName().capitalize()
+        # )
 
-        conn.handshake()
+        thread_name = threading.currentThread().getName().capitalize()
 
-        while conn.is_alive:
-            self._mapper[pack.flag](pack)
+        if conn.handshake():
+            self._report("Connection has been Established",thread_name,1)
+            while conn.is_alive:
+                try:
+                    pack: Packet = conn.get()
+                    # print(pack)
+                    if pack.flag == "CHB":
+                        conn.renew()
+                        self._report("Connection renewed",thread_name,1)
+                    else:
+                        self._mapper[pack.flag](pack)
+                except Empty:
+                    del self._connection[conn.server]
+                    self._report("Client timed out",thread_name,3)
 
 
-    def sender_function(self) -> None:
+    def _sender_function(self) -> None:
         while (outbound := self._outgoing_queue.get(block=True)).addr != ("stop",404):
             #Maybe introduce Packet.packed: bool member
             self._socket.sendto(outbound.packed_data,outbound.addr)
