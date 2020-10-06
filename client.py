@@ -1,4 +1,6 @@
 from base64 import urlsafe_b64encode
+import threading
+import time
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey#, DHParameters
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_pem_public_key
@@ -8,96 +10,129 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import dh
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-# from server import Server
 
-PACKET_SIZE: int = 256
-port: int = 1337
-server_addr: str = "localhost"
+class Client:
 
-client: socket.socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-client.connect((server_addr,port))
+    PACKET_SIZE: int = 256
+    _keep_alive: bool = True
 
-pack: Packet = Packet("CHI","Ferko","0000")
+    def connect_to(self, add:str, port:int):
+        self._sock: socket.socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+        self._sock.connect((add,port))
 
-print(f"Sending: {pack.contents}")
+        pack: Packet = Packet("CHI","Ferko","0000")
 
-client.send(pack.contents.encode())
+        print(f"Sending: {pack.contents}")
 
-server: str = Packet.from_bytes(client.recvfrom(PACKET_SIZE)[0]).server
+        self._sock.send((pack.flag+pack.data+('#'*(248-len(pack.data)))+pack.server+'\n').encode())
 
-packets: "list[Packet]" = []
+        shi: Packet = Packet.from_bytes(self._sock.recvfrom(self.PACKET_SIZE)[0])
 
-print("Listening for SDH")
+        self.server: str = shi.server
 
-server_public_key: bytes = bytes()
+        self.TTL = float(shi.raw_data.split("|")[1].split(":")[1].rstrip('#'))
 
-for i in range(4):
-    segment: Packet = Packet.from_bytes(client.recvfrom(PACKET_SIZE)[0])
-    packets.append(segment)
-    server_public_key += segment.raw_data.split('|')[1].rstrip('#').encode("utf-8")
+        print(f"TTL:{self.TTL}")
 
-print("Server public key:")
-print(server_public_key)
+        packets: "list[Packet]" = []
 
-# for i in packets:
-#     print(i.raw_data,end="")
+        print("Listening for SDH")
 
-p = 0xFFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AACAA68FFFFFFFFFFFFFFFF
-g = 2
+        server_public_key: bytes = bytes()
 
-params_numbers = dh.DHParameterNumbers(p,g,None)
-parameters = params_numbers.parameters(default_backend())
+        for i in range(4):
+            segment: Packet = Packet.from_bytes(self._sock.recvfrom(self.PACKET_SIZE)[0])
+            packets.append(segment)
+            server_public_key += segment.raw_data.split('|')[1].rstrip('#').encode("utf-8")
 
-# parameters: DHParameters = dh.generate_parameters(generator=2, key_size=2048,backend=default_backend()) #type: ignore
+        print("Server public key:")
+        print(server_public_key)
 
-private_key: DHPrivateKey = parameters.generate_private_key() #type: ignore
+        # for i in packets:
+        #     print(i.raw_data,end="")
 
-public_key: DHPublicKey = private_key.public_key()
+        p = 0xFFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AACAA68FFFFFFFFFFFFFFFF
+        g = 2
 
-encoded_public_key: bytes = public_key.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+        params_numbers = dh.DHParameterNumbers(p,g,None)
+        parameters = params_numbers.parameters(default_backend())
 
-print("Client public key:")
-print(encoded_public_key)
+        # parameters: DHParameters = dh.generate_parameters(generator=2, key_size=2048,backend=default_backend()) #type: ignore
 
-segments: "list[bytes]" = []
+        private_key: DHPrivateKey = parameters.generate_private_key() #type: ignore
 
-j: int = 0
+        public_key: DHPublicKey = private_key.public_key()
 
-for i in range(0,800,201):
-    print(i)
-    flag_plus_data = f"CDHS:{j}|".encode() + encoded_public_key[i:i+201]
-    segments.append(flag_plus_data + ('#'*(250 - len(flag_plus_data))).encode() + '|'.encode() + server.encode() + '\n'.encode())
-    j -=- 1    
+        encoded_public_key: bytes = public_key.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
 
-for i in segments:
-    pack: Packet = Packet("CDH","",server)
-    pack.packed_data = i
-    client.send(pack.packed_data)
+        print("self.Client public key:")
+        print(encoded_public_key)
 
-server_public_key_decoded: DHPublicKey = load_pem_public_key(server_public_key,backend=default_backend())
+        segments: "list[bytes]" = []
 
-shared_key = private_key.exchange(server_public_key_decoded)
+        j: int = 0
 
-shared_key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'handshake data', backend=default_backend()).derive(shared_key)
-print(shared_key)
+        for i in range(0,800,201):
+            print(i)
+            flag_plus_data = f"CDHS:{j}|".encode() + encoded_public_key[i:i+201]
+            segments.append(flag_plus_data + ('#'*(250 - len(flag_plus_data))).encode() + '|'.encode() + self.server.encode() + '\n'.encode())
+            j -=- 1    
 
-f = Fernet(urlsafe_b64encode(shared_key))
+        for i in segments:
+            pack: Packet = Packet("CDH","",self.server)
+            pack.packed_data = i
+            self._sock.send(pack.packed_data)
 
-def pack_func(to_pack: Packet, f: Fernet) -> Packet:
-        msg: bytes = bytes()
-        msg += to_pack.flag.encode()
-        msg += f.encrypt((to_pack.data).encode()) 
-        msg += to_pack.server.encode()
-        msg += "\n".encode()
-        to_pack.packed_data = msg
-        return to_pack
+        server_public_key_decoded: DHPublicKey = load_pem_public_key(server_public_key,backend=default_backend())
 
-packet = Packet("CCC",input("Message: "),server)
+        shared_key = private_key.exchange(server_public_key_decoded)
 
-pack_func(packet,f).packed_data
+        shared_key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'handshake data', backend=default_backend()).derive(shared_key)
+        print(shared_key)
 
-print(len(packet.packed_data))
+        self.f = Fernet(urlsafe_b64encode(shared_key))
 
-client.send(packet.packed_data)
+        packet = Packet("CCC","Hello, yes I can.",self.server)
 
-client.close()
+        self.pack(packet).packed_data
+
+        print(len(packet.packed_data))
+
+        self._sock.send(packet.packed_data)
+
+        print(self.f.decrypt(Packet.from_bytes(self._sock.recvfrom(self.PACKET_SIZE)[0]).raw_data.encode()).rstrip(b'#'))
+
+        self._heartbeat()
+
+    def _heartbeat(self):
+        hb_thread = threading.Thread(target=self._hb_func)
+        hb_thread.start()
+
+    def _hb_func(self):
+        while self._keep_alive:
+            self._sock.send(self.pack(Packet("CHB","HB",self.server)).packed_data)
+            time.sleep(self.TTL-2)
+
+    def pack(self,to_pack: Packet) -> Packet:
+                msg: bytes = bytes()
+                msg += to_pack.flag.encode()
+                msg += self.f.encrypt((to_pack.data).encode()) 
+                msg += to_pack.server.encode()
+                msg += "\n".encode()
+                to_pack.packed_data = msg
+                return to_pack
+
+    def disconnect(self):
+        self._keep_alive = False
+        client._sock.close()
+
+if __name__ == "__main__":
+
+    client:Client = Client()
+
+    client.connect_to("localhost",1337)
+
+    while (x := input()) != "exit":
+        print(x)
+    else:
+        client.disconnect()
