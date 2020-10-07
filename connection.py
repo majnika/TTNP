@@ -27,9 +27,7 @@ class Connection:
 
     def handshake(self) -> bool:
         pack = Packet("SHI","Hello|"+ f"TTL:{self.TTL}" ,self.server)
-        pack.packed_data = ((pack.flag+pack.data+'#'*(248-len(pack.data))+pack.server+'\n')).encode()
-        pack.addr = self.addr
-        self.ship(pack)
+        self.ship(self.pack(pack,encrypt=False))
 
         #TODO maybe exchange parameters in SHI
         p = 0xFFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AACAA68FFFFFFFFFFFFFFFF
@@ -48,8 +46,6 @@ class Connection:
 
         encoded_public_key: bytes = public_key.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
 
-        segments: "list[bytes]" = []
-
         j: int = 0
 
         print("Server public key:")
@@ -57,24 +53,17 @@ class Connection:
 
         for i in range(0,800,201):
             print(i)
-            flag_plus_data = f"CDHS:{j}|".encode() + encoded_public_key[i:i+201]
-            segments.append(flag_plus_data + ('#'*(250 - len(flag_plus_data))).encode() + '|'.encode() + self.server.encode() + '\n'.encode())
-            j -=- 1   
-
-        for i in segments:
-            pack: Packet = Packet("SDH","",self.server)
-            pack.packed_data = i
-            pack.addr = self.addr
+            flag_plus_data = f"SDH:{j}|".encode() + encoded_public_key[i:i+201]
+            flag_plus_data += ('#'*(250 - len(flag_plus_data))).encode() + '|'.encode() + self.server.encode() + '\n'.encode()
+            pack = Packet("SDH","",self.server)
+            pack.packed_data = flag_plus_data
             self.ship(pack)
-
-        del segments
-
-        packs: "list[Packet]" = []
+            j -=- 1
 
         client_public_key: bytes = bytes()
 
         for _ in range(4):
-            packs.append(pack := self._q_IN.get(block=True,timeout=120.0))
+            pack = self._q_IN.get(block=True,timeout=120.0)
             # print(pack.raw_data)
             client_public_key += pack.raw_data.split('|')[1].rstrip('#').encode("utf-8")
         
@@ -92,7 +81,7 @@ class Connection:
 
         self.ship(self.pack(Packet("SCC","Hello, can you see this?",self.server)))
 
-        ccc: Packet = self._q_IN.get()
+        ccc: Packet = self.get()
 
         print(self.unpack(ccc).raw_data) 
 
@@ -110,15 +99,19 @@ class Connection:
         pack.addr = self.addr
         self._q_OUT.put(pack)
 
-    def pack(self, to_pack: Packet) -> Packet:
-        msg: bytes = bytes()
-        msg += to_pack.flag.encode()
-        msg += self._f.encrypt((to_pack.data).encode())   
-        # msg += ('#'*(248 - len(msg))).encode()
-        msg += to_pack.server.encode()
-        msg += "\n".encode()
-        to_pack.packed_data = msg
-        return to_pack
+    def pack(self,to_pack: Packet, encrypt: bool = True) -> Packet:
+                msg: bytes = bytes()
+                msg += to_pack.flag.encode()
+                print(len(to_pack.data))
+                if encrypt:
+                    msg += self._f.encrypt((to_pack.data).encode()) 
+                else:
+                    msg += to_pack.data.encode()
+                    msg += (b'#' * (248 - len(to_pack.data)))
+                msg += to_pack.server.encode()
+                msg += "\n".encode()
+                to_pack.packed_data = msg
+                return to_pack
 
     def unpack(self, to_unpack: Packet) -> Packet:
         to_unpack.data = self._f.decrypt(to_unpack.raw_data.encode()).decode()
