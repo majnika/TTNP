@@ -1,3 +1,4 @@
+from datetime import datetime
 from queue import Empty, Queue
 from typing import Dict, Callable, Tuple
 # from cryptography.fernet import Fernet
@@ -17,7 +18,7 @@ class Server:
     """
 
     #The mapper of the handler functions
-    _mapper: Dict[str, Callable[[Packet], None]] = dict()
+    _mapper: Dict[str, Callable[[Packet,Connection], None]] = dict()
     _connection: Dict[str, "Queue[Packet]"] = dict()
     #The address of the server 
     addr: Tuple[str, int]
@@ -26,7 +27,7 @@ class Server:
     #The size of the packet
     #127 Bits of actual data
     #TODO Make larger packet sizes available if 256 is not sufficient
-    PACKET_SIZE: int = 256
+    MAX_PACKET_SIZE: int = 2048
     #The queue for outgoing packets consumed by sender_thread
     _outgoing_queue: "Queue[Packet]" = Queue(-1)
     _next_server: int = 0
@@ -54,13 +55,13 @@ class Server:
     def _report(self, msg: str, sender: str = "REPORT", type: int = 0) -> None:
         if self._cli:
             if type in self._report_types.keys():
-                msg = f"[{sender}]: {msg}"
+                msg = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}][{sender}]: {msg}"
                 print(colored(msg,self._report_types[type]))
             else:
                 raise Exception
 
 
-    def add_handler(self, func: Callable[[Packet], None], flag: str) -> None:
+    def add_handler(self, func: Callable[[Packet, Connection], None], flag: str) -> None:
         self._mapper[flag] = func
 
     def listen(self, cli: bool = True) -> None: #cli: bool option specifies whether control data should be displayed to the cli
@@ -84,7 +85,7 @@ class Server:
         sender_thred.start()
 
         while True: #Change this to something sexier, maybe recursion ( ͡° ͜ʖ ͡°) 
-            data, addr = self._socket.recvfrom(self.PACKET_SIZE)
+            data, addr = self._socket.recvfrom(self.MAX_PACKET_SIZE)
             pack = Packet.from_bytes(data)
             if (pack).flag == "CHI" and pack.server == "0000": 
                 #Packet is a fresh request for connection
@@ -97,7 +98,7 @@ class Server:
 
                 self._connection[server] = Queue(-1)
 
-                conn = Connection(pack.addr,server,self.TTL,self._connection[server],self._outgoing_queue) #type: ignore
+                conn = Connection(pack.addr,server,self.TTL,self._connection[server],self._outgoing_queue,self._report) #type: ignore
 
                 print(self._connection)
 
@@ -119,6 +120,7 @@ class Server:
         # )
 
         thread_name = threading.currentThread().getName().capitalize()
+        conn.thread_name = thread_name
 
         if conn.handshake():
             self._report("Connection has been Established",thread_name,1)
@@ -126,11 +128,11 @@ class Server:
                 try:
                     pack: Packet = conn.get()
                     # print(pack)
-                    if pack.flag == "CHB":
-                        conn.renew()
-                        self._report("Connection renewed",thread_name,1)
-                    else:
-                        self._mapper[pack.flag](pack)
+                    # if pack.flag == "CHB":
+                    #     conn.renew()
+                    #     self._report("Connection renewed",thread_name,1)
+                    # else:
+                    self._mapper[pack.flag](pack,conn)
                 except Empty:
                     del self._connection[conn.server]
                     self._report("Client timed out",thread_name,3)
