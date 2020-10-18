@@ -18,10 +18,15 @@ class Packet:
     def from_bytes(cls, raw_bytes: bytes, decode: bool = True):
         raw: str = raw_bytes.decode()
         return cls(
+        # raw[0:3],
+        # raw[3:251],
+        # raw[251:255]
+        # )
         raw[0:3],
-        (raw[3:251]),
-        raw[251:255]
+        raw[3:len(raw)-5],
+        raw[len(raw)-5:len(raw)-1]
         )
+
 
 
     @property
