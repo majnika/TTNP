@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 class Client:
 
-    PACKET_SIZE: int = 256
+    MAX_PACKET_SIZE: int = 2048
     _keep_alive: bool = True
 
     def connect_to(self, add:str, port:int):
@@ -26,7 +26,7 @@ class Client:
 
         self.ship(self.pack(pack, encrypt=False))
 
-        shi: Packet = Packet.from_bytes(self._sock.recvfrom(self.PACKET_SIZE)[0])
+        shi: Packet = Packet.from_bytes(self._sock.recvfrom(self.MAX_PACKET_SIZE)[0])
 
         self.server: str = shi.server
 
@@ -39,7 +39,7 @@ class Client:
         server_public_key: bytes = bytes()
 
         for i in range(4):
-            segment: Packet = Packet.from_bytes(self._sock.recvfrom(self.PACKET_SIZE)[0])
+            segment: Packet = Packet.from_bytes(self._sock.recvfrom(self.MAX_PACKET_SIZE)[0])
             server_public_key += segment.raw_data.split('|')[1].rstrip('#').encode("utf-8")
 
         print("Server public key:")
@@ -90,7 +90,7 @@ class Client:
 
         self._sock.send(packet.packed_data)
 
-        print(self._f.decrypt(Packet.from_bytes(self._sock.recvfrom(self.PACKET_SIZE)[0]).raw_data.encode()).rstrip(b'#'))
+        print(self._f.decrypt(Packet.from_bytes(self._sock.recvfrom(self.MAX_PACKET_SIZE)[0]).raw_data.encode()).rstrip(b'#'))
 
         self._heartbeat()
 
