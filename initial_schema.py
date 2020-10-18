@@ -1,43 +1,46 @@
+from connection import Connection
 from typing import Callable, Dict
 from packet import Packet
 from server import Server
+from connection import Connection
 
 server: Server = Server(TTL=15)
 
-def begin_Handshake(pack: Packet):
+def begin_Handshake(pack: Packet, conn: Connection):
     pass
 
-def begin_Diffie_Hellman(pack: Packet):
+def begin_Diffie_Hellman(pack: Packet, conn: Connection):
     pass
 
-def finalize_Diffie_Hellman(pack: Packet):
+def finalize_Diffie_Hellman(pack: Packet, conn: Connection):
     pass
 
-def begin_Crypto_Check(pack: Packet):
+def begin_Crypto_Check(pack: Packet, conn: Connection):
     pass
 
-def finalize_Crypto_Check(pack: Packet):
+def finalize_Crypto_Check(pack: Packet, conn: Connection):
     pass
 
-def finalize_Handshake(pack: Packet):
+def finalize_Handshake(pack: Packet, conn: Connection):
     pass
 
-def handle_Heartbeat(pack: Packet):
+def handle_Heartbeat(pack: Packet, conn: Connection):
+    conn.renew()
+    conn.report("Connection renewed",conn.thread_name,1)
+
+def begin_Client_Termination(pack: Packet, conn: Connection):
     pass
 
-def begin_Client_Termination(pack: Packet):
+def Terminate_Client(pack: Packet, conn: Connection):
     pass
 
-def Terminate_Client(pack: Packet):
+def finalize_Client_Termination(pack: Packet, conn: Connection):
     pass
 
-def finalize_Client_Termination(pack: Packet):
+def force_Terminate_Connection(pack: Packet, conn: Connection):
     pass
 
-def force_Terminate_Connection(pack: Packet):
-    pass
-
-miezdu: Dict[str, Callable[[Packet], None]] = {
+miezdu: Dict[str, Callable[[Packet, Connection], None]] = {
     "CHI": begin_Handshake,
     "SDH": begin_Diffie_Hellman,
     "CDH": finalize_Diffie_Hellman,
