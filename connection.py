@@ -1,6 +1,6 @@
 from base64 import urlsafe_b64encode
 from datetime import datetime
-from typing import Tuple
+from typing import Callable, Tuple
 from cryptography.fernet import Fernet
 from queue import Queue
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey#, DHParameters
@@ -14,7 +14,9 @@ from  cryptography.hazmat.primitives.serialization import PublicFormat#, Paramet
 
 class Connection:
 
-    def __init__(self, addr: Tuple[str, int], server: str, TTL:float, incoming_queue: "Queue[Packet]", outgoing_queue: "Queue[Packet]") -> None:
+    thread_name: str
+
+    def __init__(self, addr: Tuple[str, int], server: str, TTL:float, incoming_queue: "Queue[Packet]", outgoing_queue: "Queue[Packet]", report_function: Callable[[str,str,int],None]) -> None:
         self.addr: Tuple[str, int] = addr
         self.server: str = server
         self._state: str = "Initiated"
@@ -24,6 +26,7 @@ class Connection:
         self.TTL: float = TTL
         self._f: Fernet
         self._hanshake_sequence: "list[str]" = ["CHI","CDH","CCC"]
+        self.report: Callable[[str,str,int], None] = report_function
 
     def handshake(self) -> bool:
         pack = Packet("SHI","Hello|"+ f"TTL:{self.TTL}" ,self.server)
@@ -124,11 +127,11 @@ class Connection:
     def is_alive(self) -> bool:
         return ((datetime.now() - self._last_hb).seconds) < self.TTL
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    conn: Connection = Connection(("a",80),"0001",5.0,Queue(),Queue())
+#     conn: Connection = Connection(("a",80),"0001",5.0,Queue(),Queue(),)
 
-    conn._last_hb = datetime.now() #type: ignore
+#     conn._last_hb = datetime.now() #type: ignore
 
-    while True:
-        print(conn.is_alive)
+#     while True:
+#         print(conn.is_alive)
