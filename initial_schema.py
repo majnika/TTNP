@@ -6,38 +6,38 @@ from connection import Connection
 
 server: Server = Server(TTL=15)
 
-def begin_Handshake(pack: Packet, conn: Connection):
+def begin_Handshake(pack: Packet, conn: Connection) -> None:
     pass
 
-def begin_Diffie_Hellman(pack: Packet, conn: Connection):
+def begin_Diffie_Hellman(pack: Packet, conn: Connection) -> None:
     pass
 
-def finalize_Diffie_Hellman(pack: Packet, conn: Connection):
+def finalize_Diffie_Hellman(pack: Packet, conn: Connection) -> None:
     pass
 
-def begin_Crypto_Check(pack: Packet, conn: Connection):
+def begin_Crypto_Check(pack: Packet, conn: Connection) -> None:
     pass
 
-def finalize_Crypto_Check(pack: Packet, conn: Connection):
+def finalize_Crypto_Check(pack: Packet, conn: Connection) -> None:
     pass
 
-def finalize_Handshake(pack: Packet, conn: Connection):
+def finalize_Handshake(pack: Packet, conn: Connection) -> None:
     pass
 
-def handle_Heartbeat(pack: Packet, conn: Connection):
+def handle_Heartbeat(pack: Packet, conn: Connection) -> None:
     conn.renew()
     conn.report("Connection renewed",conn.thread_name,1)
 
-def begin_Client_Termination(pack: Packet, conn: Connection):
+def begin_Client_Termination(pack: Packet, conn: Connection) -> None:
     pass
 
-def Terminate_Client(pack: Packet, conn: Connection):
+def Terminate_Client(pack: Packet, conn: Connection) -> None:
     pass
 
-def finalize_Client_Termination(pack: Packet, conn: Connection):
+def finalize_Client_Termination(pack: Packet, conn: Connection) -> None:
     pass
 
-def force_Terminate_Connection(pack: Packet, conn: Connection):
+def force_Terminate_Connection(pack: Packet, conn: Connection) -> None:
     pass
 
 miezdu: Dict[str, Callable[[Packet, Connection], None]] = {
@@ -51,7 +51,7 @@ miezdu: Dict[str, Callable[[Packet, Connection], None]] = {
     "CGB": begin_Client_Termination,
     "SGB": Terminate_Client,
     "CFL": finalize_Client_Termination,
-    "SFL": force_Terminate_Connection
+    "SFL": force_Terminate_Connection,
 }
 
 for key in miezdu.keys():
