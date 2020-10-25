@@ -3,6 +3,7 @@ from typing import Callable, Dict
 from packet import Packet
 from server import Server
 from connection import Connection
+from transaction import Transaction
 
 server: Server = Server(TTL=15)
 
@@ -40,6 +41,19 @@ def finalize_Client_Termination(pack: Packet, conn: Connection) -> None:
 def force_Terminate_Connection(pack: Packet, conn: Connection) -> None:
     pass
 
+def begin_Client_Transaction(pack: Packet, conn: Connection) -> None:
+    conn.transaction = Transaction() #Add types: Data, Authorization, Querry
+    conn.ship(conn.pack(Packet("SUM","",conn.server)))
+
+def handle_Client_Data(pack: Packet, conn: Connection) -> None:
+
+    miezdu: bytes = bytes()
+
+    if conn.transaction.data:
+        if pack.sequence == conn.transaction.sequence:
+            miezdu += pack["data"]
+
+
 miezdu: Dict[str, Callable[[Packet, Connection], None]] = {
     "CHI": begin_Handshake,
     "SDH": begin_Diffie_Hellman,
@@ -52,6 +66,8 @@ miezdu: Dict[str, Callable[[Packet, Connection], None]] = {
     "SGB": Terminate_Client,
     "CFL": finalize_Client_Termination,
     "SFL": force_Terminate_Connection,
+    "CBT": begin_Client_Transaction,
+    "CTD": handle_Client_Data
 }
 
 for key in miezdu.keys():
