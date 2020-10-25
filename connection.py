@@ -1,5 +1,6 @@
 from base64 import urlsafe_b64encode
 from datetime import datetime
+from transaction import Transaction
 from typing import Callable, Tuple
 from cryptography.fernet import Fernet
 from queue import Queue
@@ -15,6 +16,7 @@ from  cryptography.hazmat.primitives.serialization import PublicFormat#, Paramet
 class Connection:
 
     thread_name: str
+    transaction: Transaction
 
     def __init__(self, addr: Tuple[str, int], server: str, TTL:float, incoming_queue: "Queue[Packet]", outgoing_queue: "Queue[Packet]", report_function: Callable[[str,str,int],None]) -> None:
         self.addr: Tuple[str, int] = addr
