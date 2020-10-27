@@ -22,7 +22,7 @@ class Client:
 
         pack: Packet = Packet("CHI","Ferko","0000")
 
-        print(f"Sending: {pack.contents}")
+        # print(f"Sending: {pack.contents}")
 
         self.ship(self.pack(pack, encrypt=False))
 
@@ -34,7 +34,7 @@ class Client:
 
         print(f"TTL:{self.TTL}")
 
-        print("Listening for SDH")
+        # print("Listening for SDH")
 
         server_public_key: bytes = bytes()
 
@@ -42,8 +42,8 @@ class Client:
             segment: Packet = Packet.from_bytes(self._sock.recvfrom(self.MAX_PACKET_SIZE)[0])
             server_public_key += segment.raw_data.split('|')[1].rstrip('#').encode("utf-8")
 
-        print("Server public key:")
-        print(server_public_key)
+        # print("Server public key:")
+        # print(server_public_key)
 
         p = 0xFFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AACAA68FFFFFFFFFFFFFFFF
         g = 2
@@ -59,13 +59,13 @@ class Client:
 
         encoded_public_key: bytes = public_key.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
 
-        print("Client public key:")
-        print(encoded_public_key)
+        # print("Client public key:")
+        # print(encoded_public_key)
 
         j: int = 0
 
         for i in range(0,800,201):
-            print(i)
+            # print(i)
             flag_plus_data = f"CDH:{j}|".encode() + encoded_public_key[i:i+201]
             flag_plus_data += ('#'*(250 - len(flag_plus_data))).encode() + '|'.encode() + self.server.encode() + '\n'.encode()
             pack = Packet("SDH","",self.server)
@@ -78,7 +78,7 @@ class Client:
         shared_key = private_key.exchange(server_public_key_decoded)
 
         shared_key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'handshake data', backend=default_backend()).derive(shared_key)
-        print(shared_key)
+        # print(shared_key)
 
         self._f = Fernet(urlsafe_b64encode(shared_key))
 
@@ -86,11 +86,11 @@ class Client:
 
         self.pack(packet).packed_data
 
-        print(len(packet.packed_data))
+        # print(len(packet.packed_data))
 
         self._sock.send(packet.packed_data)
 
-        print(self._f.decrypt(Packet.from_bytes(self._sock.recvfrom(self.MAX_PACKET_SIZE)[0]).raw_data.encode()).rstrip(b'#'))
+        # print(self._f.decrypt(Packet.from_bytes(self._sock.recvfrom(self.MAX_PACKET_SIZE)[0]).raw_data.encode()).rstrip(b'#'))
 
         self._heartbeat()
 
@@ -106,7 +106,7 @@ class Client:
     def pack(self,to_pack: Packet, encrypt: bool = True) -> Packet:
                 msg: bytes = bytes()
                 msg += to_pack.flag.encode()
-                print(len(to_pack.data))
+                # print(len(to_pack.data))
                 if encrypt:
                     msg += self._f.encrypt((to_pack.data).encode()) 
                 else:
@@ -122,12 +122,17 @@ class Client:
         return to_unpack
 
     def ship(self, pack:Packet) -> None:
-        print(pack.packed_data)
+        #print(pack.packed_data)
         self._sock.send(pack.packed_data)
 
     def disconnect(self):
         self._keep_alive = False
         client._sock.close()
+
+    def send_message(self, msg:str) -> None:
+        self.ship(self.pack(Packet("CBT","Type:SimpleMessage|",self.server)))
+        self._sock.recv(self.MAX_PACKET_SIZE)
+        self.ship(self.pack(Packet("CPD",f"S:0|Data:{msg}",self.server)))
 
 if __name__ == "__main__":
 
@@ -136,6 +141,6 @@ if __name__ == "__main__":
     client.connect_to("localhost",1337)
 
     while (x := input()) != "exit":
-        print(x)
+        client.send_message(x)
     else:
         client.disconnect()
