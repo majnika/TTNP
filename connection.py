@@ -28,7 +28,10 @@ class Connection:
         self.TTL: float = TTL
         self._f: Fernet
         self._hanshake_sequence: "list[str]" = ["CHI","CDH","CCC"]
-        self.report: Callable[[str,str,int], None] = report_function
+        self._report: Callable[[str,str,int], None] = report_function
+
+    def report(self,msg: str,type: int = 0) -> None:
+        self._report(msg,self.thread_name,type)
 
     def handshake(self) -> bool:
         pack = Packet("SHI","Hello|"+ f"TTL:{self.TTL}" ,self.server)
@@ -53,11 +56,11 @@ class Connection:
 
         j: int = 0
 
-        print("Server public key:")
-        print(encoded_public_key)
+        # print("Server public key:")
+        # print(encoded_public_key)
 
         for i in range(0,800,201):
-            print(i)
+            # print(i)
             flag_plus_data = f"SDH:{j}|".encode() + encoded_public_key[i:i+201]
             flag_plus_data += ('#'*(250 - len(flag_plus_data))).encode() + '|'.encode() + self.server.encode() + '\n'.encode()
             pack = Packet("SDH","",self.server)
@@ -72,15 +75,15 @@ class Connection:
             # print(pack.raw_data)
             client_public_key += pack.raw_data.split('|')[1].rstrip('#').encode("utf-8")
         
-        print("Client public key:")
-        print(client_public_key)
+        # print("Client public key:")
+        # print(client_public_key)
 
         client_public_key_decoded: DHPublicKey = load_pem_public_key(client_public_key,backend=default_backend())
 
         shared_key = private_key.exchange(client_public_key_decoded)
 
         shared_key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'handshake data', backend=default_backend()).derive(shared_key)
-        print(shared_key)
+        # print(shared_key)
 
         self._f = Fernet(urlsafe_b64encode(shared_key))
 
@@ -88,7 +91,7 @@ class Connection:
 
         ccc: Packet = self.get()
 
-        print(self.unpack(ccc).raw_data) 
+        # print(self.unpack(ccc).raw_data) 
 
         self.ship(self.pack(Packet("SHF","Secret message",self.server)))
 
@@ -107,7 +110,7 @@ class Connection:
     def pack(self,to_pack: Packet, encrypt: bool = True) -> Packet:
                 msg: bytes = bytes()
                 msg += to_pack.flag.encode()
-                print(len(to_pack.data))
+                # print(len(to_pack.data))
                 if encrypt:
                     msg += self._f.encrypt((to_pack.data).encode()) 
                 else:
@@ -124,6 +127,10 @@ class Connection:
 
     def renew(self):
         self._last_hb = datetime.now()
+
+    def parse_packet_data(self,pack: Packet) -> None:
+        for key, item in [i.split(':') for i in pack.raw_data.split('|')]:
+                pack[key] = item
 
     @property
     def is_alive(self) -> bool:
