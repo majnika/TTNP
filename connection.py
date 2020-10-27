@@ -89,7 +89,7 @@ class Connection:
 
         self.ship(self.pack(Packet("SCC","Hello, can you see this?",self.server)))
 
-        ccc: Packet = self.get()
+        self.get()
 
         # print(self.unpack(ccc).raw_data) 
 
