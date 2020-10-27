@@ -5,21 +5,21 @@ class Packet:
 
     addr: Tuple[str, int]
     packed_data: bytes
-    _dict: Dict[str, bytes] = dict()
+    _dict: Dict[str, str] = dict()
 
     def __init__(self,flag: str, data: str, server: str) -> None:
         self.flag = flag
         self._str_data: str = data
         self.server = server
-        if self.flag[2] == "D":
-            for key, item in [i.split(':') for i in data.split('|')]:
-                self._dict[key] = item.encode("utf-8")
 
     def __str__(self) -> str:
         return self.contents[0:-1]
 
     def __getitem__(self, key: str) -> bytes:
         return self._dict[key]
+
+    def __setitem__(self, key: str, item: str) -> None:
+        self._dict[key] = item
 
     @classmethod
     def from_bytes(cls, raw_bytes: bytes, decode: bool = True):
