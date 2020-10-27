@@ -100,7 +100,7 @@ class Server:
 
                 conn = Connection(pack.addr,server,self.TTL,self._connection[server],self._outgoing_queue,self._report) #type: ignore
 
-                print(self._connection)
+                #print(self._connection)
 
                 #Start a new thread for every connection
                 thread = threading.Thread(target = self._handle_incoming,args=(conn,))
