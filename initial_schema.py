@@ -27,7 +27,7 @@ def finalize_Handshake(pack: Packet, conn: Connection) -> None:
 
 def handle_Heartbeat(pack: Packet, conn: Connection) -> None:
     conn.renew()
-    conn.report("Connection renewed",conn.thread_name,1)
+    conn.report("Connection renewed",1)
 
 def begin_Client_Termination(pack: Packet, conn: Connection) -> None:
     pass
@@ -47,11 +47,13 @@ def begin_Client_Transaction(pack: Packet, conn: Connection) -> None:
 
 def handle_Client_Data(pack: Packet, conn: Connection) -> None:
 
-    miezdu: bytes = bytes()
+    #miezdu: bytes = bytes()
 
-    if conn.transaction.data:
-        if pack.sequence == conn.transaction.sequence:
-            miezdu += pack["data"]
+    # if conn.transaction.data:
+    #    if pack.sequence == conn.transaction.sequence:
+    #        miezdu += pack["data"]
+    conn.parse_packet_data(conn.unpack(pack))
+    conn.report(pack["Data"])
 
 
 miezdu: Dict[str, Callable[[Packet, Connection], None]] = {
@@ -67,7 +69,7 @@ miezdu: Dict[str, Callable[[Packet, Connection], None]] = {
     "CFL": finalize_Client_Termination,
     "SFL": force_Terminate_Connection,
     "CBT": begin_Client_Transaction,
-    "CTD": handle_Client_Data
+    "CPD": handle_Client_Data,
 }
 
 for key in miezdu.keys():
