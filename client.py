@@ -127,6 +127,9 @@ class Client:
 
     def disconnect(self):
         self._keep_alive = False
+        self.ship(self.pack(Packet("CGB","Bye",self.server)))
+        self._sock.recv(self.MAX_PACKET_SIZE)
+        self.ship(self.pack(Packet("CFL","",self.server)))
         client._sock.close()
 
     def send_message(self, msg:str) -> None:

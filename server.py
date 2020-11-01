@@ -85,33 +85,35 @@ class Server:
         sender_thred.start()
 
         while True: #Change this to something sexier, maybe recursion ( ͡° ͜ʖ ͡°) 
-            data, addr = self._socket.recvfrom(self.MAX_PACKET_SIZE)
-            pack = Packet.from_bytes(data)
-            if (pack).flag == "CHI" and pack.server == "0000": 
-                #Packet is a fresh request for connection
-                #TODO make a list of connected sockets to prevent pottential system overload from
-                #falsly created threads
+            try:
+                data, addr = self._socket.recvfrom(self.MAX_PACKET_SIZE)
+                pack = Packet.from_bytes(data)
+                if (pack).flag == "CHI" and pack.server == "0000": 
+                    #Packet is a fresh request for connection
+                    #TODO make a list of connected sockets to prevent pottential system overload from
+                    #falsly created threads
 
-                pack.addr = addr
+                    pack.addr = addr
 
-                server = self.next_server
+                    server = self.next_server
 
-                self._connection[server] = Queue(-1)
+                    self._connection[server] = Queue(-1)
 
-                conn = Connection(pack.addr,server,self.TTL,self._connection[server],self._outgoing_queue,self._report) #type: ignore
+                    conn = Connection(pack.addr,server,self.TTL,self._connection[server],self._outgoing_queue,self._report) #type: ignore
 
-                #print(self._connection)
+                    #print(self._connection)
 
-                #Start a new thread for every connection
-                thread = threading.Thread(target = self._handle_incoming,args=(conn,))
+                    #Start a new thread for every connection
+                    thread = threading.Thread(target = self._handle_incoming,args=(conn,))
+                    
+                    self._report(f"New thread {thread.getName()} is serving {addr}",thread.getName().capitalize())
+                    
+                    thread.start()
                 
-                self._report(f"New thread {thread.getName()} is serving {addr}",thread.getName().capitalize())
-                
-                thread.start()
-            
-            else:
-                self._connection[pack.server].put(pack)
-
+                else:
+                    self._connection[pack.server].put(pack)
+            except Exception:
+                pass
 
     def _handle_incoming(self, conn: Connection) -> None:
         # #For debug purposes

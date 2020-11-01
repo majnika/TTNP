@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import dh
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, load_pem_public_key
-from  cryptography.hazmat.primitives.serialization import PublicFormat#, ParameterFormat
+from cryptography.hazmat.primitives.serialization import PublicFormat#, ParameterFormat
 
 class Connection:
 
@@ -29,6 +29,17 @@ class Connection:
         self._f: Fernet
         self._hanshake_sequence: "list[str]" = ["CHI","CDH","CCC"]
         self._report: Callable[[str,str,int], None] = report_function
+
+    def terminate(self) -> None:
+        pass #TODO
+
+    @property
+    def state(self) -> str:
+        return self._state
+
+    @state.setter
+    def state(self, new: str) -> None:
+        self._state = new
 
     def report(self,msg: str,type: int = 0) -> None:
         self._report(msg,self.thread_name,type)

@@ -30,13 +30,16 @@ def handle_Heartbeat(pack: Packet, conn: Connection) -> None:
     conn.report("Connection renewed",1)
 
 def begin_Client_Termination(pack: Packet, conn: Connection) -> None:
-    pass
+    conn.ship(conn.pack(Packet("SGB","Bye",conn.server)))
+    conn.state = "Ready for Termination"
 
 def Terminate_Client(pack: Packet, conn: Connection) -> None:
     pass
 
 def finalize_Client_Termination(pack: Packet, conn: Connection) -> None:
-    pass
+    if conn.state == "Ready for Termination":
+        conn.terminate() #TODO
+        conn.report("Connection is Terminated")
 
 def force_Terminate_Connection(pack: Packet, conn: Connection) -> None:
     pass
