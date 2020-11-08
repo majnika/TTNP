@@ -17,6 +17,7 @@ class Connection:
 
     thread_name: str
     transaction: Transaction
+    _keep_alive: bool = True
 
     def __init__(self, addr: Tuple[str, int], server: str, TTL:float, incoming_queue: "Queue[Packet]", outgoing_queue: "Queue[Packet]", report_function: Callable[[str,str,int],None]) -> None:
         self.addr: Tuple[str, int] = addr
@@ -31,7 +32,7 @@ class Connection:
         self._report: Callable[[str,str,int], None] = report_function
 
     def terminate(self) -> None:
-        pass #TODO
+        self._keep_alive = False
 
     @property
     def state(self) -> str:
@@ -145,7 +146,9 @@ class Connection:
 
     @property
     def is_alive(self) -> bool:
-        return ((datetime.now() - self._last_hb).seconds) < self.TTL
+        if self._keep_alive:
+            return ((datetime.now() - self._last_hb).seconds) < self.TTL
+        return False
 
 # if __name__ == "__main__":
 

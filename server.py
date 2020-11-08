@@ -138,6 +138,8 @@ class Server:
                 except Empty:
                     del self._connection[conn.server]
                     self._report("Client timed out",thread_name,3)
+            else:
+                self._report("Connection was Terminated",thread_name)
 
 
     def _sender_function(self) -> None:

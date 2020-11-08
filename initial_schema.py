@@ -39,7 +39,7 @@ def Terminate_Client(pack: Packet, conn: Connection) -> None:
 def finalize_Client_Termination(pack: Packet, conn: Connection) -> None:
     if conn.state == "Ready for Termination":
         conn.terminate() #TODO
-        conn.report("Connection is Terminated")
+        conn.report("Connection has been Terminated by remote host")
 
 def force_Terminate_Connection(pack: Packet, conn: Connection) -> None:
     pass
