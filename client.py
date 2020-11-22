@@ -15,6 +15,17 @@ class Client:
 
     MAX_PACKET_SIZE: int = 2048
     _keep_alive: bool = True
+    addr: str
+    port: int
+
+    def __init__(self, addr: "tuple[str,int] | str"):
+        if isinstance(addr,str):
+            self.addr, self.port = addr.split(":")[0], int(addr.split(":")[1])
+        else:
+            self.addr, self.port = addr
+
+    def connect(self):
+        self.connect_to(self.addr,self.port)
 
     def connect_to(self, add:str, port:int):
         self._sock: socket.socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
@@ -139,7 +150,7 @@ class Client:
 
 if __name__ == "__main__":
 
-    client:Client = Client()
+    client:Client = Client(("localhost",1337))
 
     client.connect_to("localhost",1337)
 
