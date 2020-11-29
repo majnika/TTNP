@@ -1,4 +1,15 @@
+import enum
+
+class TransactionTypes(enum.Enum):
+    Data = enum.auto()
+    Authorization = enum.auto()
+    Querry = enum.auto()
+    SimpleMessage = enum.auto()
+
 class Transaction:
     
-    data: bool = False
-    sequence: int 
+    sequence: int = 0
+
+    def __init__(self, type: TransactionTypes, slices: int) -> None: 
+        self.type: TransactionTypes = type
+        self.slices = slices
