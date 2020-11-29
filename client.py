@@ -10,6 +10,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import dh
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+import math
 
 class Client:
 
@@ -144,7 +145,7 @@ class Client:
         client._sock.close()
 
     def send_message(self, msg:str) -> None:
-        self.ship(self.pack(Packet("CBT","Type:SimpleMessage|",self.server)))
+        self.ship(self.pack(Packet("CBT",f"Type:Data|Slices:{math.ceil((len(msg)/700))}",self.server)))
         self._sock.recv(self.MAX_PACKET_SIZE)
         self.ship(self.pack(Packet("CPD",f"S:0|Data:{msg}",self.server)))
 
