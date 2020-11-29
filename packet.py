@@ -15,7 +15,7 @@ class Packet:
     def __str__(self) -> str:
         return self.contents[0:-1]
 
-    def __getitem__(self, key: str) ->str:
+    def __getitem__(self, key: str) -> str:
         return self._dict[key]
 
     def __setitem__(self, key: str, item: str) -> None:
