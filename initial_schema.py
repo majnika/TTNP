@@ -3,7 +3,7 @@ from typing import Callable, Dict
 from packet import Packet
 from server import Server
 from connection import Connection
-from transaction import Transaction
+from transaction import Transaction, TransactionTypes
 
 server: Server = Server(TTL=15)
 
@@ -45,18 +45,25 @@ def force_Terminate_Connection(pack: Packet, conn: Connection) -> None:
     pass
 
 def begin_Client_Transaction(pack: Packet, conn: Connection) -> None:
-    conn.transaction = Transaction() #Add types: Data, Authorization, Querry
+    conn.parse_packet_data(conn.unpack(pack))
+    conn.transaction = Transaction(TransactionTypes[pack["Type"]],int(pack["Slices"])) #Add types: Data, Authorization, Querry
     conn.ship(conn.pack(Packet("SUM","",conn.server)))
 
 def handle_Client_Data(pack: Packet, conn: Connection) -> None:
 
-    #miezdu: bytes = bytes()
+    miezdu: str = str()
 
-    # if conn.transaction.data:
-    #    if pack.sequence == conn.transaction.sequence:
-    #        miezdu += pack["data"]
     conn.parse_packet_data(conn.unpack(pack))
-    conn.report(pack["Data"])
+
+    if conn.transaction.type == TransactionTypes.Data:
+       if int(pack["S"]) == conn.transaction.sequence:
+            miezdu += pack["Data"]
+            conn.transaction.sequence += 1
+    
+    print(conn.transaction.sequence,conn.transaction.slices)
+
+    if conn.transaction.sequence == conn.transaction.slices:
+        conn.report(miezdu)
 
 
 miezdu: Dict[str, Callable[[Packet, Connection], None]] = {
