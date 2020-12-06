@@ -85,7 +85,7 @@ class Client:
             self.ship(pack)
             j -=- 1
 
-        server_public_key_decoded: DHPublicKey = load_pem_public_key(server_public_key,backend=default_backend())
+        server_public_key_decoded: DHPublicKey = load_pem_public_key(server_public_key,backend=default_backend()) #type: ignore
 
         shared_key = private_key.exchange(server_public_key_decoded)
 

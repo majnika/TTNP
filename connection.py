@@ -90,7 +90,7 @@ class Connection:
         # print("Client public key:")
         # print(client_public_key)
 
-        client_public_key_decoded: DHPublicKey = load_pem_public_key(client_public_key,backend=default_backend())
+        client_public_key_decoded: DHPublicKey = load_pem_public_key(client_public_key,backend=default_backend()) #type: ignore
 
         shared_key = private_key.exchange(client_public_key_decoded)
 
