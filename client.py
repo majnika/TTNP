@@ -100,7 +100,7 @@ class Client:
 
         # print(len(packet.packed_data))
 
-        self._sock.send(packet.packed_data)
+        self.ship(packet)
 
         # print(self._f.decrypt(Packet.from_bytes(self._sock.recvfrom(self.MAX_PACKET_SIZE)[0]).raw_data.encode()).rstrip(b'#'))
 
