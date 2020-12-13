@@ -9,6 +9,7 @@ class TransactionTypes(enum.Enum):
 class Transaction:
     
     sequence: int = 0
+    miezdu: str = str()
 
     def __init__(self, type: TransactionTypes, slices: int) -> None: 
         self.type: TransactionTypes = type
