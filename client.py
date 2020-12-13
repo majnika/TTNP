@@ -145,9 +145,12 @@ class Client:
         client._sock.close()
 
     def send_message(self, msg:str) -> None:
-        self.ship(self.pack(Packet("CBT",f"Type:Data|Slices:{math.ceil((len(msg)/700))}",self.server)))
+        slices: int = math.ceil((len(msg)/700))
+        self.ship(self.pack(Packet("CBT",f"Type:Data|Slices:{slices}",self.server)))
         self._sock.recv(self.MAX_PACKET_SIZE)
-        self.ship(self.pack(Packet("CPD",f"S:0|Data:{msg}",self.server)))
+        for i, slices in enumerate(range(0,slices*700,700)):
+            self.ship(self.pack(Packet("CPD",f"S:{i}|Data:{msg[slices:slices+700]}",self.server)))
+            self._sock.recv(self.MAX_PACKET_SIZE)
 
 if __name__ == "__main__":
 

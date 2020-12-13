@@ -51,19 +51,18 @@ def begin_Client_Transaction(pack: Packet, conn: Connection) -> None:
 
 def handle_Client_Data(pack: Packet, conn: Connection) -> None:
 
-    miezdu: str = str()
-
     conn.parse_packet_data(conn.unpack(pack))
+    conn.ship(conn.pack(Packet("SUM","",conn.server)))
 
     if conn.transaction.type == TransactionTypes.Data:
        if int(pack["S"]) == conn.transaction.sequence:
-            miezdu += pack["Data"]
+            conn.transaction.miezdu += pack["Data"]
             conn.transaction.sequence += 1
     
-    print(conn.transaction.sequence,conn.transaction.slices)
+    print(conn.transaction.sequence,conn.transaction.slices,pack["S"])
 
     if conn.transaction.sequence == conn.transaction.slices:
-        conn.report(miezdu)
+        conn.report(conn.transaction.miezdu)
 
 
 miezdu: Dict[str, Callable[[Packet, Connection], None]] = {
