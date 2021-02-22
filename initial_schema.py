@@ -56,13 +56,14 @@ def handle_Client_Data(pack: Packet, conn: Connection) -> None:
 
     if conn.transaction.type == TransactionTypes.Data:
        if int(pack["S"]) == conn.transaction.sequence:
-            conn.transaction.miezdu += pack["Data"]
+            conn.transaction.buffer += pack["Data"]
             conn.transaction.sequence += 1
     
-    print(conn.transaction.sequence,conn.transaction.slices,pack["S"])
+    # DEBUG
+    # print(conn.transaction.sequence,conn.transaction.slices,pack["S"])
 
     if conn.transaction.sequence == conn.transaction.slices:
-        conn.report(conn.transaction.miezdu)
+        conn.report(conn.transaction.buffer)
 
 
 miezdu: Dict[str, Callable[[Packet, Connection], None]] = {
